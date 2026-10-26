@@ -3,6 +3,7 @@ set -euo pipefail
 
 VERSION="${WEBPZ_VERSION:-latest}"
 INSTALL_DIR="${WEBPZ_INSTALL_DIR:-$HOME/.local/bin}"
+DATA_DIR="${WEBPZ_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/webpz}"
 RELEASES="https://github.com/HelloVass/webpz/releases"
 
 case "$(uname -s)" in
@@ -55,6 +56,12 @@ ACTUAL="$("${CHECKSUM[@]}" "$WORK_DIR/$ARCHIVE")"
 [[ "${ACTUAL%% *}" == "$EXPECTED" ]] || { echo "SHA-256 mismatch; installation aborted" >&2; exit 1; }
 
 tar -xzf "$WORK_DIR/$ARCHIVE" -C "$WORK_DIR" webpz
+if tar -tzf "$WORK_DIR/$ARCHIVE" | grep -q '^licenses/'; then
+  tar -xzf "$WORK_DIR/$ARCHIVE" -C "$WORK_DIR" README.md licenses
+  mkdir -p "$DATA_DIR/licenses"
+  cp "$WORK_DIR/licenses/"* "$DATA_DIR/licenses/"
+  cp "$WORK_DIR/README.md" "$DATA_DIR/README.md"
+fi
 [[ -f "$WORK_DIR/webpz" && ! -L "$WORK_DIR/webpz" ]] || { echo "release binary missing" >&2; exit 1; }
 chmod +x "$WORK_DIR/webpz"
 "$WORK_DIR/webpz" --version
@@ -69,7 +76,4 @@ case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
   *) printf 'Add %s to PATH in your shell configuration.\n' "$INSTALL_DIR" ;;
 esac
-if ! command -v cwebp >/dev/null 2>&1 || ! command -v dwebp >/dev/null 2>&1; then
-  echo "libwebp is required: brew install webp (macOS), apt install webp (Debian/Ubuntu)."
-fi
 echo "Next: webpz doctor && webpz init"
